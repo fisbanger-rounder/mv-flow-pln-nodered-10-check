@@ -241,6 +241,15 @@
       else startFeed();
     }
 
+    function getFeedDevice() {
+      try {
+        const url = new URL(feedUrlInput.value.trim());
+        return url.searchParams.get('device') || 'default';
+      } catch {
+        return 'default';
+      }
+    }
+
     function startFeed() {
       const url = feedUrlInput.value.trim();
       if (!url) return alert('Masukkan URL feed Node-RED terlebih dahulu!');
@@ -253,6 +262,7 @@
       btnToggleFeed.classList.replace('bg-amber-600', 'bg-red-500');
       btnToggleFeed.classList.replace('hover:bg-amber-500', 'hover:bg-red-400');
 
+      fetch(`/api/feed/start?device=${encodeURIComponent(getFeedDevice())}`, { method: 'POST' }).catch(() => {});
       fetchFeed();
       const interval = Math.max(1, parseInt(feedIntervalInput.value || '3', 10));
       feedTimer = setInterval(fetchFeed, interval * 1000);
@@ -266,6 +276,7 @@
       btnToggleFeed.innerText = 'Start Feed';
       btnToggleFeed.classList.replace('bg-red-500', 'bg-amber-600');
       btnToggleFeed.classList.replace('hover:bg-red-400', 'hover:bg-amber-500');
+      fetch(`/api/feed/stop?device=${encodeURIComponent(getFeedDevice())}`, { method: 'POST' }).catch(() => {});
     }
 
     async function fetchFeed() {

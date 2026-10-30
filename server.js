@@ -11,6 +11,7 @@ const CAPTURES_DIR = path.join(__dirname, 'captures');
 fs.mkdirSync(CAPTURES_DIR, { recursive: true });
 
 const captures = new Map();
+const activeFeeds = new Set();
 
 app.use((req, res, next) => {
   res.set('Access-Control-Allow-Origin', '*');
@@ -39,6 +40,12 @@ app.post('/api/capture', authCapture, (req, res) => {
 
     const contentType = req.headers['content-type'] || 'image/jpeg';
     const device = (req.query.device || 'default').replace(/[^a-zA-Z0-9_-]/g, '');
+
+    if (!activeFeeds.has(device)) {
+      console.log(`Capture ignored for device '${device}'; active feeds: ${Array.from(activeFeeds).join(', ') || 'none'}`);
+      return res.json({ ok: false, ignored: true, reason: 'Feed not active' });
+    }
+
     const etag = crypto.createHash('md5').update(buffer).digest('hex');
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const ext = contentType.includes('png') ? 'png' : 'jpg';
@@ -113,6 +120,18 @@ app.get('/api/captures/:filename', (req, res) => {
   const ct = ext === '.png' ? 'image/png' : 'image/jpeg';
   res.set('Content-Type', ct);
   res.send(fs.readFileSync(filepath));
+});
+
+app.post('/api/feed/start', (req, res) => {
+  const device = (req.query.device || 'default').replace(/[^a-zA-Z0-9_-]/g, '');
+  activeFeeds.add(device);
+  res.json({ ok: true, active: true });
+});
+
+app.post('/api/feed/stop', (req, res) => {
+  const device = (req.query.device || 'default').replace(/[^a-zA-Z0-9_-]/g, '');
+  activeFeeds.delete(device);
+  res.json({ ok: true, active: false });
 });
 
 app.listen(PORT, () => {
