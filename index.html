@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PLN MV Work Compliance Monitor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .badge-alarm { background-color: #fee2e2; color: #dc2626; border: 1px solid #f87171; }
+    .badge-info { background-color: #dbeafe; color: #1d4ed8; border: 1px solid #60a5fa; }
+    .badge-success { background-color: #dcfce7; color: #15803d; border: 1px solid #4ade80; }
+
+    /* ponytail: light theme override by remapping existing slate classes; remove this block to revert to dark */
+    .bg-slate-900 { background-color: #ffffff !important; }
+    .bg-slate-950 { background-color: #f8fafc !important; }
+    .bg-slate-800 { background-color: #f1f5f9 !important; }
+    .bg-slate-700 { background-color: #e2e8f0 !important; }
+    .bg-slate-600 { background-color: #cbd5e1 !important; }
+    .border-slate-700,
+    .border-slate-600,
+    .border-slate-800 { border-color: #cbd5e1 !important; }
+    .text-slate-100,
+    .text-slate-200,
+    .text-slate-300 { color: #0f172a !important; }
+    .text-slate-400 { color: #475569 !important; }
+    .text-slate-500 { color: #64748b !important; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
+  <div class="max-w-6xl mx-auto space-y-6">
+    
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg">
+      <div>
+        <h1 class="text-2xl font-bold text-amber-400">PLN MV Works AI Safety Guard</h1>
+        <p class="text-sm text-slate-400">Monitoring Otomatis Kepatuhan SOP</p>
+      </div>
+      <div id="statusBadge" class="mt-3 md:mt-0 px-4 py-2 rounded-lg font-bold text-sm bg-slate-700 text-slate-300">
+        Status: STANDBY
+      </div>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- Kolom 1: Konfigurasi API & Status Flow -->
+      <div class="space-y-6">
+        <!-- Pengaturan OpenAI Compatible -->
+        <div class="bg-slate-800 p-5 rounded-xl border border-slate-700">
+          <h2 class="text-lg font-semibold text-slate-200 mb-4 border-b border-slate-700 pb-2">⚙️ Pengaturan AI Provider</h2>
+          <div class="space-y-3 text-sm">
+            <div>
+              <label class="block text-slate-400 mb-1">Base URL (OpenAI Compatible)</label>
+              <input id="apiBase" type="text" value="https://api.openai.com/v1" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-amber-400">
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1">API Key</label>
+              <input id="apiKey" type="password" placeholder="sk-..." class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-amber-400">
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1">Model Vision</label>
+              <input id="apiModel" type="text" value="gpt-4o-mini" placeholder="gpt-4o, gpt-4o-mini, qwen2.5-vl, dll." class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-amber-400">
+            </div>
+          </div>
+        </div>
+
+        <!-- Tracking SOP PLN -->
+        <div class="bg-slate-800 p-5 rounded-xl border border-slate-700">
+          <h2 class="text-lg font-semibold text-slate-200 mb-4 border-b border-slate-700 pb-2">📋 Indikator Kepatuhan SOP</h2>
+          
+          <div class="space-y-4 text-sm">
+            <div>
+              <span class="text-slate-400">Kategori Pekerjaan:</span>
+              <div id="workCategory" class="text-base font-bold text-slate-300 mt-1">-</div>
+            </div>
+
+            <div>
+              <span class="text-slate-400">Progres Capture:</span>
+              <div class="w-full bg-slate-950 rounded-full h-4 mt-1 overflow-hidden border border-slate-700">
+                <div id="progressBar" class="bg-amber-500 h-full w-0 transition-all duration-300"></div>
+              </div>
+              <div class="text-right text-xs text-slate-400 mt-1" id="progressText">0 / 10 Capture</div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 pt-2">
+              <div id="groundingCard" class="p-3 bg-slate-950 rounded-lg border border-slate-700 text-center">
+                <div class="text-xs text-slate-400">Grounding Activity</div>
+                <div id="groundingStatus" class="text-xl font-bold text-slate-500 mt-1">0</div>
+              </div>
+              <div id="voltageCard" class="p-3 bg-slate-950 rounded-lg border border-slate-700 text-center">
+                <div class="text-xs text-slate-400">Voltage Check</div>
+                <div id="voltageStatus" class="text-xl font-bold text-slate-500 mt-1">0</div>
+              </div>
+            </div>
+
+            <div id="sopResultBanner" class="hidden p-4 rounded-lg font-bold text-center text-sm"></div>
+
+            <button onclick="resetFlow()" class="w-full py-2 bg-slate-700 hover:bg-slate-600 rounded text-slate-300 font-semibold transition">
+              Reset Siklus CCTV
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Kolom 2 & 3: Input Capture & Log Analisis -->
+      <div class="lg:col-span-2 space-y-6">
+        
+        <!-- Upload/Drop Area -->
+        <div class="bg-slate-800 p-5 rounded-xl border border-slate-700">
+          <h2 class="text-lg font-semibold text-slate-200 mb-3">📸 Masukan Capture Gambar</h2>
+          
+          <div id="dropZone" class="border-2 border-dashed border-slate-600 rounded-xl p-6 text-center cursor-pointer hover:border-amber-400 transition bg-slate-950 flex flex-col items-center justify-center min-h-[220px]">
+            <input type="file" id="fileInput" accept="image/*" class="hidden">
+            <svg class="w-12 h-12 text-slate-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+            <p class="text-slate-300 text-sm font-medium">Klik atau Drag & Drop Capture Gambar di sini</p>
+            <p class="text-xs text-slate-500 mt-1">Mendukung file JPG, PNG, atau feed capture Ezviz dari Node-RED</p>
+          </div>
+
+          <!-- Feed Capture Ezviz via Node-RED / MV Guard -->
+          <div class="mt-4 p-4 bg-slate-950 rounded-lg border border-slate-700">
+            <h3 class="text-sm font-semibold text-slate-300 mb-2">Feed Capture Ezviz via Node-RED / MV Guard</h3>
+            <div class="space-y-2">
+              <input id="feedUrl" type="text" value="http://localhost:3006/api/latest?device=BH7353783" placeholder="http://node-red-ip:1880/ezviz-capture" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-400">
+              <div class="flex flex-wrap items-center gap-2">
+                <label class="text-xs text-slate-400">Interval (detik)</label>
+                <input id="feedInterval" type="number" value="3" min="1" class="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200 focus:outline-none focus:border-amber-400">
+                <button id="btnToggleFeed" onclick="toggleFeed()" class="px-4 py-1.5 bg-amber-600 hover:bg-amber-500 text-slate-950 text-sm font-semibold rounded transition">Start Feed</button>
+              </div>
+              <label class="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+                <input type="checkbox" id="autoProcess" checked class="accent-amber-500"> Auto-process ke AI setiap capture
+              </label>
+            </div>
+            <p class="text-xs text-slate-500 mt-2">Untuk MV Guard gunakan <code>/api/latest?device=&lt;SERIAL&gt;</code>. Pastikan endpoint mengembalikan gambar dan CORS diizinkan.</p>
+          </div>
+
+          <!-- Preview & Action -->
+          <div id="previewContainer" class="hidden mt-4 flex items-center justify-between bg-slate-950 p-3 rounded-lg border border-slate-700">
+            <div class="flex items-center space-x-3">
+              <img id="imagePreview" class="h-16 w-16 object-cover rounded border border-slate-700" alt="Preview">
+              <div>
+                <p id="imageFileName" class="text-sm font-medium text-slate-200 truncate max-w-xs"></p>
+                <p id="imageStatusText" class="text-xs text-slate-400">Siap dianalisis</p>
+              </div>
+            </div>
+            <button id="btnProcess" onclick="processCurrentImage()" class="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg transition disabled:opacity-50">
+              Kirim ke AI
+            </button>
+          </div>
+        </div>
+
+        <!-- Terminal Log Hasil Analisis AI -->
+        <div class="bg-slate-800 p-5 rounded-xl border border-slate-700">
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="text-lg font-semibold text-slate-200">🔍 Riwayat Deteksi AI</h2>
+            <button onclick="clearLogs()" class="text-xs text-slate-400 hover:text-slate-200">Bersihkan Log</button>
+          </div>
+          <div id="logOutput" class="h-64 bg-slate-950 rounded-lg p-4 font-mono text-xs overflow-y-auto space-y-2 border border-slate-700 text-slate-300">
+            <div class="text-slate-600">// Menunggu capture gambar untuk dianalisis...</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State Aplikasi
+    let currentStep = "CHECK_MV"; // "CHECK_MV", "MONITOR_SOP", "COMPLETED"
+    let captureCount = 0;
+    let groundingDetected = false;
+    let voltageCheckDetected = false;
+    let base64Image = null;
+
+    // DOM Elements
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const previewContainer = document.getElementById('previewContainer');
+    const imagePreview = document.getElementById('imagePreview');
+    const imageFileName = document.getElementById('imageFileName');
+    const btnProcess = document.getElementById('btnProcess');
+    const logOutput = document.getElementById('logOutput');
+    const statusBadge = document.getElementById('statusBadge');
+    const workCategory = document.getElementById('workCategory');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const groundingStatus = document.getElementById('groundingStatus');
+    const voltageStatus = document.getElementById('voltageStatus');
+    const sopResultBanner = document.getElementById('sopResultBanner');
+
+    // Drag and Drop Handler
+    dropZone.onclick = () => fileInput.click();
+    dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('border-amber-400'); };
+    dropZone.ondragleave = () => dropZone.classList.remove('border-amber-400');
+    dropZone.ondrop = (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('border-amber-400');
+      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    };
+    fileInput.onchange = (e) => {
+      if (e.target.files.length) handleFile(e.target.files[0]);
+    };
+
+    function handleFile(file) {
+      if (!file.type.startsWith('image/')) return alert('Mohon pilih file gambar!');
+      imageFileName.innerText = file.name;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        base64Image = e.target.result;
+        imagePreview.src = base64Image;
+        previewContainer.classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Node-RED Feed Capture
+    let feedTimer = null;
+    let feedRunning = false;
+    let lastFeedEtag = null;
+    const feedUrlInput = document.getElementById('feedUrl');
+    const feedIntervalInput = document.getElementById('feedInterval');
+    const autoProcessCheckbox = document.getElementById('autoProcess');
+    const btnToggleFeed = document.getElementById('btnToggleFeed');
+
+    function toggleFeed() {
+      if (feedRunning) stopFeed();
+      else startFeed();
+    }
+
+    function startFeed() {
+      const url = feedUrlInput.value.trim();
+      if (!url) return alert('Masukkan URL feed Node-RED terlebih dahulu!');
+
+      feedRunning = true;
+      lastFeedEtag = null;
+      btnToggleFeed.innerText = 'Stop Feed';
+      btnToggleFeed.classList.replace('bg-amber-600', 'bg-red-500');
+      btnToggleFeed.classList.replace('hover:bg-amber-500', 'hover:bg-red-400');
+
+      fetchFeed();
+      const interval = Math.max(1, parseInt(feedIntervalInput.value || '3', 10));
+      feedTimer = setInterval(fetchFeed, interval * 1000);
+    }
+
+    function stopFeed() {
+      feedRunning = false;
+      clearInterval(feedTimer);
+      feedTimer = null;
+      lastFeedEtag = null;
+      btnToggleFeed.innerText = 'Start Feed';
+      btnToggleFeed.classList.replace('bg-red-500', 'bg-amber-600');
+      btnToggleFeed.classList.replace('hover:bg-red-400', 'hover:bg-amber-500');
+    }
+
+    async function fetchFeed() {
+      const url = feedUrlInput.value.trim();
+      try {
+        const headers = {};
+        if (lastFeedEtag) headers['If-None-Match'] = lastFeedEtag;
+        const res = await fetch(url, { headers });
+
+        if (res.status === 304) return;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const etag = res.headers.get('ETag') || res.headers.get('Last-Modified');
+        const isNew = !lastFeedEtag || !etag || lastFeedEtag !== etag;
+        const blob = await res.blob();
+        if (!blob.type.startsWith('image/')) throw new Error('Feed bukan file gambar');
+
+        imageFileName.innerText = `Node-RED feed: ${new Date().toLocaleTimeString()}`;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          base64Image = e.target.result;
+          imagePreview.src = base64Image;
+          previewContainer.classList.remove('hidden');
+
+          if (autoProcessCheckbox.checked && isNew) {
+            if (currentStep === 'COMPLETED') {
+              addLog('Feed', 'Siklus monitoring sudah selesai. Auto-process dihentikan.', 'warn');
+              stopFeed();
+            } else {
+              processCurrentImage(true);
+            }
+          }
+
+          if (etag) lastFeedEtag = etag;
+        };
+        reader.readAsDataURL(blob);
+      } catch (err) {
+        addLog('Feed Error', err.message, 'alarm');
+        stopFeed();
+      }
+    }
+
+    function addLog(title, detail, type = 'info') {
+      const time = new Date().toLocaleTimeString();
+      let color = 'text-slate-300';
+      if (type === 'success') color = 'text-green-400 font-semibold';
+      if (type === 'alarm') color = 'text-red-400 font-bold';
+      if (type === 'warn') color = 'text-amber-400';
+
+      const entry = document.createElement('div');
+      entry.className = `p-2 rounded bg-slate-900 border border-slate-800 ${color}`;
+      entry.innerHTML = `<span class="text-slate-500">[${time}]</span> <span class="font-bold">${title}</span>: ${detail}`;
+      logOutput.prepend(entry);
+    }
+
+    function clearLogs() {
+      logOutput.innerHTML = '<div class="text-slate-600">// Log dibersihkan.</div>';
+    }
+
+    async function callOpenAI(promptText) {
+      const apiBase = document.getElementById('apiBase').value.replace(/\/+$/, "");
+      const apiKey = document.getElementById('apiKey').value.trim();
+      const apiModel = document.getElementById('apiModel').value.trim();
+
+      if (!apiKey) throw new Error("API Key belum diisi!");
+
+      const payload = {
+        model: apiModel,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: promptText },
+              { type: "image_url", image_url: { url: base64Image } }
+            ]
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.1
+      };
+
+      const res = await fetch(`${apiBase}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || `HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      return JSON.parse(data.choices[0].message.content);
+    }
+
+    async function processCurrentImage(silent = false) {
+      if (!base64Image) return alert("Pilih gambar terlebih dahulu!");
+      btnProcess.disabled = true;
+      btnProcess.innerText = "Memproses...";
+
+      try {
+        if (currentStep === "CHECK_MV") {
+          // STEP 1: Cek apakah kategori MV
+          addLog("Tahap 1", "Menganalisis apakah terdapat medium voltage switchgear...");
+          const prompt = `Analisis gambar ini secara teliti.
+Pertanyaan: "Apakah ada medium voltage switchgear pada gambar tersebut?"
+Keluarkan output JSON dengan format:
+{
+  "is_mv": true/false,
+  "alasan": "penjelasan singkat"
+}`;
+          const result = await callOpenAI(prompt);
+          addLog("Hasil AI", `${result.alasan} (is_mv: ${result.is_mv})`);
+
+          if (result.is_mv) {
+            currentStep = "MONITOR_SOP";
+            workCategory.innerText = "Treat as MV work";
+            workCategory.className = "text-base font-bold text-amber-400 mt-1";
+            statusBadge.innerText = "MV WORK IN PROGRESS";
+            statusBadge.className = "px-4 py-2 rounded-lg font-bold text-sm bg-amber-500/20 text-amber-400 border border-amber-500";
+            addLog("Status Diperbarui", "Kategori MV Work terkonfirmasi. Memulai monitoring 10 capture SOP.", "warn");
+            captureCount = 1;
+            updateProgress();
+          } else {
+            workCategory.innerText = "Treat as normal work";
+            workCategory.className = "text-base font-bold text-blue-400 mt-1";
+            statusBadge.innerText = "NORMAL WORK";
+            statusBadge.className = "px-4 py-2 rounded-lg font-bold text-sm bg-blue-500/20 text-blue-400 border border-blue-500";
+            addLog("Status Selesai", "Bukan pekerjaan MV. Selesai (Treat as normal work).", "info");
+            currentStep = "COMPLETED";
+          }
+
+        } else if (currentStep === "MONITOR_SOP") {
+          // STEP 2: Cek Grounding & Voltage Check (Capture 1 s/d 10)
+          captureCount++;
+          updateProgress();
+          addLog(`Analisis Capture ${captureCount}`, "Mendeteksi grounding tool atau voltage detector stick...");
+
+          const prompt = `Analisis aktivitas pada gambar ini:
+Pertanyaan: "Apakah ada aktifitas grounding menggunakan grounding tools atau aktifitas voltage check menggunakan voltage detector stick?"
+Keluarkan output JSON dengan format:
+{
+  "grounding": 1 atau 0,
+  "voltage_check": 1 atau 0,
+  "keterangan": "penjelasan ringkas"
+}`;
+          const result = await callOpenAI(prompt);
+          
+          if (result.grounding === 1) {
+            groundingDetected = true;
+            groundingStatus.innerText = "1";
+            groundingStatus.className = "text-xl font-bold text-green-400 mt-1";
+            document.getElementById('groundingCard').classList.add('border-green-500');
+          }
+          if (result.voltage_check === 1) {
+            voltageCheckDetected = true;
+            voltageStatus.innerText = "1";
+            voltageStatus.className = "text-xl font-bold text-green-400 mt-1";
+            document.getElementById('voltageCard').classList.add('border-green-500');
+          }
+
+          addLog(`Hasil Capture ${captureCount}`, `Grounding: ${result.grounding}, Voltage Check: ${result.voltage_check} (${result.keterangan})`);
+
+          // Selesai siklus 10 capture
+          if (captureCount >= 10) {
+            currentStep = "COMPLETED";
+            evaluasiSOP();
+          }
+        } else {
+          const doneMsg = "Siklus monitoring sudah selesai. Klik 'Reset Siklus CCTV' untuk memulai sesi baru.";
+          if (silent) addLog("Feed", doneMsg, "warn");
+          else alert(doneMsg);
+        }
+      } catch (err) {
+        addLog("Error AI", err.message, "alarm");
+        if (!silent) alert("Gagal memanggil AI: " + err.message);
+      } finally {
+        btnProcess.disabled = false;
+        btnProcess.innerText = "Kirim ke AI";
+      }
+    }
+
+    function updateProgress() {
+      const pct = Math.min((captureCount / 10) * 100, 100);
+      progressBar.style.width = `${pct}%`;
+      progressText.innerText = `${captureCount} / 10 Capture`;
+    }
+
+    function evaluasiSOP() {
+      sopResultBanner.classList.remove('hidden');
+      if (groundingDetected && voltageCheckDetected) {
+        // SOP Terpenuhi -> Info
+        statusBadge.innerText = "SOP TERPENUHI (INFO)";
+        statusBadge.className = "px-4 py-2 rounded-lg font-bold text-sm badge-success";
+        sopResultBanner.className = "p-4 rounded-lg font-bold text-center text-sm badge-info";
+        sopResultBanner.innerHTML = "✅ <strong>INFO:</strong> SOP Terpenuhi! Aktivitas Grounding dan Voltage Check terverifikasi.";
+        addLog("Keputusan Akhir", "SOP TERPENUHI -> Trigger: Info", "success");
+      } else {
+        // SOP Tidak Terpenuhi -> Alarm
+        statusBadge.innerText = "SOP TIDAK TERPENUHI (ALARM)";
+        statusBadge.className = "px-4 py-2 rounded-lg font-bold text-sm badge-alarm animate-pulse";
+        sopResultBanner.className = "p-4 rounded-lg font-bold text-center text-sm badge-alarm";
+        sopResultBanner.innerHTML = "🚨 <strong>ALARM:</strong> SOP Tidak Terpenuhi! Salah satu atau kedua prosedur (Grounding / Voltage Check) tidak terdeteksi.";
+        addLog("Keputusan Akhir", "SOP TIDAK TERPENUHI -> Trigger: Alarm", "alarm");
+      }
+    }
+
+    function resetFlow() {
+      stopFeed();
+      currentStep = "CHECK_MV";
+      captureCount = 0;
+      groundingDetected = false;
+      voltageCheckDetected = false;
+      base64Image = null;
+      previewContainer.classList.add('hidden');
+      fileInput.value = "";
+      
+      workCategory.innerText = "-";
+      workCategory.className = "text-base font-bold text-slate-300 mt-1";
+      statusBadge.innerText = "Status: STANDBY";
+      statusBadge.className = "px-4 py-2 rounded-lg font-bold text-sm bg-slate-700 text-slate-300";
+      
+      groundingStatus.innerText = "0";
+      groundingStatus.className = "text-xl font-bold text-slate-500 mt-1";
+      document.getElementById('groundingCard').classList.remove('border-green-500');
+
+      voltageStatus.innerText = "0";
+      voltageStatus.className = "text-xl font-bold text-slate-500 mt-1";
+      document.getElementById('voltageCard').classList.remove('border-green-500');
+
+      sopResultBanner.classList.add('hidden');
+      updateProgress();
+      addLog("System", "Siklus di-reset ke status awal.");
+    }
+  </script>
+</body>
+</html>

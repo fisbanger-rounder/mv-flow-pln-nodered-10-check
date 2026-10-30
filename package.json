@@ -1,0 +1,13 @@
+{
+  "name": "mv-flow-pln",
+  "version": "1.0.0",
+  "description": "PLN MV Work Compliance Monitor with Ezviz capture feed",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

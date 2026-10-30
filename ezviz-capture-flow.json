@@ -1,0 +1,119 @@
+[
+  {
+    "id": "f0e1d2c3b4a5960",
+    "type": "tab",
+    "label": "Ezviz Capture",
+    "disabled": false,
+    "info": "Expose the Ezviz camera snapshot as a CORS-enabled image endpoint for the PLN MV Work Compliance Monitor."
+  },
+  {
+    "id": "f0e1d2c3b4a5961",
+    "type": "http in",
+    "z": "f0e1d2c3b4a5960",
+    "name": "GET /ezviz-capture",
+    "url": "/ezviz-capture",
+    "method": "get",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 160,
+    "y": 80,
+    "wires": [
+      ["f0e1d2c3b4a5962"]
+    ]
+  },
+  {
+    "id": "f0e1d2c3b4a5962",
+    "type": "http request",
+    "z": "f0e1d2c3b4a5960",
+    "name": "Fetch Ezviz snapshot",
+    "method": "GET",
+    "ret": "bin",
+    "paytoqs": "ignore",
+    "url": "http://192.168.1.100/tmpfs/auto.jpg?usr=admin&pwd=YOUR_PASSWORD",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": [],
+    "x": 370,
+    "y": 80,
+    "wires": [
+      ["f0e1d2c3b4a5963"]
+    ]
+  },
+  {
+    "id": "f0e1d2c3b4a5963",
+    "type": "function",
+    "z": "f0e1d2c3b4a5960",
+    "name": "Set image + CORS headers",
+    "func": "const ct = (msg.headers && msg.headers['content-type']) || 'image/jpeg';\nmsg.headers = {\n  'Content-Type': ct,\n  'Access-Control-Allow-Origin': '*',\n  'Cache-Control': 'no-cache'\n};\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 600,
+    "y": 80,
+    "wires": [
+      ["f0e1d2c3b4a5964"]
+    ]
+  },
+  {
+    "id": "f0e1d2c3b4a5964",
+    "type": "http response",
+    "z": "f0e1d2c3b4a5960",
+    "name": "Return image",
+    "statusCode": "",
+    "headers": {},
+    "x": 820,
+    "y": 80,
+    "wires": []
+  },
+  {
+    "id": "f0e1d2c3b4a5965",
+    "type": "http in",
+    "z": "f0e1d2c3b4a5960",
+    "name": "OPTIONS /ezviz-capture",
+    "url": "/ezviz-capture",
+    "method": "options",
+    "upload": false,
+    "swaggerDoc": "",
+    "x": 170,
+    "y": 140,
+    "wires": [
+      ["f0e1d2c3b4a5966"]
+    ]
+  },
+  {
+    "id": "f0e1d2c3b4a5966",
+    "type": "function",
+    "z": "f0e1d2c3b4a5960",
+    "name": "CORS preflight",
+    "func": "msg.statusCode = 204;\nmsg.payload = '';\nmsg.headers = {\n  'Access-Control-Allow-Origin': '*',\n  'Access-Control-Allow-Methods': 'GET, OPTIONS',\n  'Access-Control-Allow-Headers': 'Content-Type'\n};\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 380,
+    "y": 140,
+    "wires": [
+      ["f0e1d2c3b4a5967"]
+    ]
+  },
+  {
+    "id": "f0e1d2c3b4a5967",
+    "type": "http response",
+    "z": "f0e1d2c3b4a5960",
+    "name": "Return preflight",
+    "statusCode": "",
+    "headers": {},
+    "x": 620,
+    "y": 140,
+    "wires": []
+  }
+]
