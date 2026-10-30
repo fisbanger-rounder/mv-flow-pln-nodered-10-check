@@ -53,7 +53,7 @@
           <div id="aiProviderContent" class="space-y-3 text-sm">
             <div>
               <label class="block text-slate-400 mb-1">Base URL (OpenAI Compatible)</label>
-              <input id="apiBase" type="text" value="https://api.openai.com/v1" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-amber-400">
+              <input id="apiBase" type="text" value="https://api.xiaomimimo.com/v1" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-amber-400">
             </div>
             <div>
               <label class="block text-slate-400 mb-1">API Key</label>
@@ -61,7 +61,7 @@
             </div>
             <div>
               <label class="block text-slate-400 mb-1">Model Vision</label>
-              <input id="apiModel" type="text" value="gpt-4o-mini" placeholder="gpt-4o, gpt-4o-mini, qwen2.5-vl, dll." class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-amber-400">
+              <input id="apiModel" type="text" value="mimo-v2.6-pro" placeholder="gpt-4o, gpt-4o-mini, qwen2.5-vl, dll." class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-200 focus:outline-none focus:border-amber-400">
             </div>
           </div>
         </div>
@@ -244,6 +244,8 @@
     function startFeed() {
       const url = feedUrlInput.value.trim();
       if (!url) return alert('Masukkan URL feed Node-RED terlebih dahulu!');
+
+      if (currentStep === 'COMPLETED') resetFlow();
 
       feedRunning = true;
       lastFeedEtag = null;
@@ -439,7 +441,7 @@ Keluarkan output JSON dengan format:
             statusBadge.innerText = "MV WORK IN PROGRESS";
             statusBadge.className = "px-4 py-2 rounded-lg font-bold text-sm bg-amber-500/20 text-amber-400 border border-amber-500";
             addLog("Status Diperbarui", "Kategori MV Work terkonfirmasi. Memulai monitoring 10 capture SOP.", "warn");
-            captureCount = 1;
+            captureCount = 0;
             updateProgress();
           } else {
             workCategory.innerText = "Treat as normal work";
@@ -554,7 +556,7 @@ Keluarkan output JSON dengan format:
     }
 
     loadGallery();
-    setInterval(loadGallery, 5000);
+    setInterval(loadGallery, 50000);
   </script>
 </body>
 </html>
