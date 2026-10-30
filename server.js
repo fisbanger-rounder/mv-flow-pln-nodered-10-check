@@ -1,10 +1,14 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const crypto = require('crypto');
 
 const app = express();
 const CAPTURE_TOKEN = process.env.CAPTURE_TOKEN || 'w0WqCO3CWyIZkcQmCHqDR6GjNnMGiVRS';
 const PORT = process.env.PORT || 3006;
+const CAPTURES_DIR = path.join(__dirname, 'captures');
+
+fs.mkdirSync(CAPTURES_DIR, { recursive: true });
 
 const captures = new Map();
 
@@ -34,11 +38,21 @@ app.post('/api/capture', authCapture, (req, res) => {
     if (!buffer.length) return res.status(400).json({ error: 'Empty body' });
 
     const contentType = req.headers['content-type'] || 'image/jpeg';
-    const device = req.query.device || 'default';
+    const device = (req.query.device || 'default').replace(/[^a-zA-Z0-9_-]/g, '');
     const etag = crypto.createHash('md5').update(buffer).digest('hex');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const ext = contentType.includes('png') ? 'png' : 'jpg';
+    const filename = `${device}_${timestamp}_${etag}.${ext}`;
+    const filepath = path.join(CAPTURES_DIR, filename);
+
+    const existing = fs.readdirSync(CAPTURES_DIR).filter(f => f.startsWith(`${device}_`));
+    const saved = existing.length < 10;
+    if (saved) {
+      fs.writeFileSync(filepath, buffer);
+    }
     captures.set(device, { buffer, contentType, etag, timestamp: new Date().toISOString() });
 
-    res.json({ ok: true, device, size: buffer.length, timestamp: captures.get(device).timestamp });
+    res.json({ ok: true, device, size: buffer.length, saved, timestamp: captures.get(device).timestamp, filename });
   });
 });
 
@@ -68,8 +82,42 @@ app.get('/api/devices', (req, res) => {
   res.json(list);
 });
 
+app.post('/api/capture/wipe', (req, res) => {
+  try {
+    const files = fs.readdirSync(CAPTURES_DIR).filter(f => fs.statSync(path.join(CAPTURES_DIR, f)).isFile());
+    for (const file of files) fs.unlinkSync(path.join(CAPTURES_DIR, file));
+    res.json({ ok: true, removed: files.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/captures', (req, res) => {
+  try {
+    const files = fs.readdirSync(CAPTURES_DIR)
+      .filter(f => fs.statSync(path.join(CAPTURES_DIR, f)).isFile())
+      .map(f => ({ filename: f, url: `/api/captures/${f}` }));
+    res.json(files);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/captures/:filename', (req, res) => {
+  const filename = path.basename(req.params.filename);
+  const filepath = path.join(CAPTURES_DIR, filename);
+  if (!filepath.startsWith(CAPTURES_DIR)) return res.status(403).send('Forbidden');
+  if (!fs.existsSync(filepath)) return res.status(404).send('Not found');
+
+  const ext = path.extname(filename).toLowerCase();
+  const ct = ext === '.png' ? 'image/png' : 'image/jpeg';
+  res.set('Content-Type', ct);
+  res.send(fs.readFileSync(filepath));
+});
+
 app.listen(PORT, () => {
   console.log(`MV Guard server listening on http://localhost:${PORT}`);
+  console.log(`Captures dir:     ${CAPTURES_DIR}`);
   console.log(`Capture endpoint: POST http://localhost:${PORT}/api/capture?device=<SERIAL>`);
   console.log(`Latest image:     GET  http://localhost:${PORT}/api/latest?device=<SERIAL>`);
 });
